@@ -20,6 +20,6 @@ Add the following files in the ffmpeg folder
  -  ffmpeg-core.wasm
 
 ## TODO
- - Fix bug with loading
+ - Fix bug with comments increase number of buttons with comment depth
  - Add functionality to search results
  - Review imgur downloading
