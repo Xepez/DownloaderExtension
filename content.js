@@ -1,21 +1,31 @@
+// TODO List:
+// 1. Search Results - ".search-result"
+
+
 // -----------------------------
 // Generic button creator
+//
+// buttonText: Title of the button
+// action: The action to call in background.js
+// url: url to attach to the button (if not included will not include the onclick function)
 // -----------------------------
-function createDownloadButton(url) {
+function createDownloadButton(buttonText, action, url = null) {
     const btn = document.createElement('button');
-    btn.innerText = 'Download';
-    btn.className = 'my-download-btn';
+    btn.innerText = buttonText;
+    btn.className = `${buttonText}-download-btn`;
     btn.style.margin = '5px';
     btn.style.padding = '2px 5px';
     btn.style.fontSize = '11px';
     btn.style.cursor = 'pointer';
 
-    btn.onclick = () => {
-        browser.runtime.sendMessage({
-            action: 'download',
-            url
-        });
-    };
+    if (url !== null) {
+        btn.onclick = () => {
+            browser.runtime.sendMessage({
+                action: action,
+                url
+            });
+        };
+    }
 
     return btn;
 }
@@ -41,6 +51,7 @@ function addDownloadButtonToPost(post) {
     // 2. Preview / expando image
     if (!mediaLink) {
         const img = post.querySelector('.expando img, .preview img');
+
         if (img?.src) {
             mediaLink = img.src;
         }
@@ -51,7 +62,7 @@ function addDownloadButtonToPost(post) {
     const entry = post.querySelector('.entry');
     if (!entry) return;
 
-    entry.appendChild(createDownloadButton(mediaLink));
+    entry.appendChild(createDownloadButton('Download Image', 'download', mediaLink));
 }
 
 // -----------------------------
@@ -78,25 +89,8 @@ function addDownloadButtonsToComment(comment) {
 
         if (!isImage) return;
 
-        const btn = document.createElement('button');
-        btn.innerText = 'Download';
-        btn.className = 'my-download-btn';
-        btn.style.marginLeft = '6px';
-        btn.style.fontSize = '11px';
-        btn.style.cursor = 'pointer';
-
-        btn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            browser.runtime.sendMessage({
-                action: 'download',
-                url: href
-            });
-        };
-
         // Add button right after the image link
-        link.insertAdjacentElement('afterend', btn);
+        link.insertAdjacentElement('afterend', createDownloadButton('Download Image', 'download', href));
     });
 }
 
@@ -107,22 +101,13 @@ function addDownloadButtonToGallery(post) {
     if (post.querySelector('.my-gallery-download-btn')) return;
 
     const titleLink = post.querySelector("a.title");
-    if (!titleLink?.href 
-        || !titleLink?.href.includes("gallery")) 
+    if (!titleLink?.href || !titleLink?.href.includes("gallery")) 
     {
         return;
     }
 
     const postUrl = titleLink.href;
-
-    const btn = document.createElement('button');
-    btn.innerText = 'Download Gallery';
-    btn.className = 'my-gallery-download-btn';
-    btn.style.margin = '5px';
-    btn.style.padding = '2px 5px';
-    btn.style.fontSize = '11px';
-    btn.style.cursor = 'pointer';
-
+    const btn = createDownloadButton('Download Gallery');
     btn.onclick = async () => {
         try {
             // Reddit JSON endpoint
@@ -131,25 +116,20 @@ function addDownloadButtonToGallery(post) {
             const response = await fetch(jsonUrl);
             const data = await response.json();
 
-            const postData =
-                data?.[0]?.data?.children?.[0]?.data;
+            const postData = data?.[0]?.data?.children?.[0]?.data;
 
             if (!postData?.media_metadata) {
                 console.log('No gallery metadata found');
                 return;
             }
 
-            const mediaMetadata =
-                postData.media_metadata;
+            const mediaMetadata = postData.media_metadata;
 
             const urls = Object.values(mediaMetadata)
                 .map((item) => {
-                    const source =
-                        item?.s?.u || item?.s?.gif;
+                    const source = item?.s?.u || item?.s?.gif;
 
-                    return source
-                        ? source.replace(/&amp;/g, '&')
-                        : null;
+                    return source ? source.replace(/&amp;/g, '&') : null;
                 })
                 .filter(Boolean);
 
@@ -160,14 +140,9 @@ function addDownloadButtonToGallery(post) {
                 });
             });
 
-            console.log(
-                `Downloaded ${urls.length} gallery images`
-            );
+            console.log(`Downloaded ${urls.length} gallery images` );
         } catch (err) {
-            console.error(
-                'Gallery download failed:',
-                err
-            );
+            console.error('Gallery download failed:', err);
         }
     };
 
@@ -186,19 +161,15 @@ function addDownloadButtonToVideo(post) {
         return;
     }
 
-    const commentsLink =
-        post.querySelector('a.comments');
+    const commentsLink = post.querySelector('a.comments');
 
     if (!commentsLink?.href) {
         return;
     }
 
     // Detect Reddit-hosted video post
-    const outgoingLink =
-        post.querySelector('a.title');
-
-    const videoTag =
-        post.querySelector('video');
+    const outgoingLink = post.querySelector('a.title');
+    const videoTag = post.querySelector('video');
 
     const isRedditVideo =
         outgoingLink?.href?.includes('v.redd.it') ||
@@ -210,71 +181,31 @@ function addDownloadButtonToVideo(post) {
         return;
     }
 
-    const btn =
-        document.createElement('button');
-
-    btn.innerText =
-        'Download Video';
-
-    btn.className =
-        'my-video-download-btn';
-
-    btn.style.margin = '5px';
-    btn.style.padding = '2px 5px';
-    btn.style.fontSize = '11px';
-    btn.style.cursor = 'pointer';
-
+    const btn = createDownloadButton('Download Video');
     btn.onclick = async () => {
         try {
-            const jsonUrl =
-                commentsLink.href.replace(
-                    /\/$/,
-                    ''
-                ) + '.json';
-
-            const response =
-                await fetch(jsonUrl);
+            const jsonUrl = commentsLink.href.replace(/\/$/, '') + '.json';
+            const response = await fetch(jsonUrl);
 
             if (!response.ok) {
-                throw new Error(
-                    `HTTP ${response.status}`
-                );
+                throw new Error( `HTTP ${response.status}`);
             }
 
-            const data =
-                await response.json();
+            const data = await response.json();
+            const postData = data?.[0]?.data?.children?.[0]?.data;
 
-            const postData =
-                data?.[0]
-                    ?.data
-                    ?.children?.[0]
-                    ?.data;
+            const redditVideo = postData?.media?.reddit_video;
 
-            const redditVideo =
-                postData?.media
-                    ?.reddit_video;
-
-            if (
-                !redditVideo?.fallback_url
-            ) {
-                console.log(
-                    'No Reddit video found'
-                );
+            if (!redditVideo?.fallback_url) {
+                console.log('No Reddit video found');
                 return;
             }
 
-            const videoUrl =
-                redditVideo.fallback_url;
+            const videoUrl = redditVideo.fallback_url;
 
-            const parsed =
-                new URL(videoUrl);
+            const parsed = new URL(videoUrl);
 
-            const baseUrl =
-                parsed.origin +
-                parsed.pathname.substring(
-                    0,
-                    parsed.pathname.lastIndexOf('/') + 1
-                );
+            const baseUrl = parsed.origin + parsed.pathname.substring(0, parsed.pathname.lastIndexOf('/') + 1);
 
             const audioCandidates = [
                 // DASH
@@ -331,16 +262,10 @@ function addDownloadButtonToRedgifs(post) {
         return;
     }
 
-    const btn = document.createElement('button');
-    btn.innerText = 'Download Redgifs';
-    btn.className = 'my-redgifs-download-btn';
-    btn.style.margin = '5px';
-    btn.style.padding = '2px 5px';
-    btn.style.fontSize = '11px';
-    btn.style.cursor = 'pointer';
-
+    const btn = createDownloadButton('Download Redgifs');
     btn.onclick = async () => {
         try {
+            // TODO Move console logs to background or button create
             console.log('Sending Redgifs download:', titleLink.href);
 
             browser.runtime.sendMessage({
@@ -363,81 +288,24 @@ function addDownloadButtonToRedgifs(post) {
 // -----------------------------
 // Handle Imgur albums in text posts/comments
 // -----------------------------
-function addDownloadButtonsToImgurAlbums(
-    container
-) {
-    const links =
-        container.querySelectorAll(
-            'a[href]'
-        );
-
-    console.log(
-        'Imgur scan:',
-        container,
-        links.length
-    );
+function addDownloadButtonsToImgurAlbums(container) {
+    const links = container.querySelectorAll('a[href]');
 
     links.forEach((link) => {
-        if (
-            link.nextElementSibling?.classList.contains(
-                'my-imgur-download-btn'
-            )
-        ) {
+        if (link.nextElementSibling?.classList.contains('my-imgur-download-btn')) {
             return;
         }
 
-        const href =
-            link.href;
+        const href = link.href;
 
-        const isImgurAlbum =
-            /imgur\.com\/(a|gallery)\//i.test(
-                href
-            );
+        const isImgurAlbum =/imgur\.com\/(a|gallery)\//i.test(href);
 
         if (!isImgurAlbum) {
             return;
         }
 
-        console.log(
-            'Found Imgur album:',
-            href
-        );
-
-        const btn =
-            document.createElement(
-                'button'
-            );
-
-        btn.innerText =
-            'Download Album';
-
-        btn.className =
-            'my-imgur-download-btn';
-
-        btn.style.marginLeft =
-            '6px';
-
-        btn.style.fontSize =
-            '11px';
-
-        btn.style.cursor =
-            'pointer';
-
-        btn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            browser.runtime.sendMessage({
-                action:
-                    'downloadImgurAlbum',
-                albumUrl: href
-            });
-        };
-
-        link.insertAdjacentElement(
-            'afterend',
-            btn
-        );
+        console.log('Found Imgur album:', href);
+        link.insertAdjacentElement('afterend', createDownloadButton('Download Album', 'downloadImgurAlbum', href));
     });
 }
 

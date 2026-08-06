@@ -259,90 +259,106 @@ async function downloadRedgifs(pageUrl) {
 // Imgur Album Downloader
 // -----------------------------
 async function downloadImgurAlbum(albumUrl) {
+    let tab = null;
+
+    console.log('Downloading Imgur Album');
+
     try {
-        console.log('Fetching Imgur album:', albumUrl);
+        console.log('Opening Imgur album:', albumUrl);
 
-        const response = await fetch(albumUrl);
+        const match = albumUrl.match(/imgur\.com\/(?:a|gallery)\/([^/?#]+)/i);
+        if (!match) throw new Error('Could not parse Imgur album ID');
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
+        tab = await browser.tabs.create({ url: albumUrl, active: false });
 
-        const html = await response.text();
+        console.log('Created Tab');
 
-        console.log('Checking html: ', html);
-
-        // Find embedded Imgur state
-        const nextDataMatch = html.match(
-            /<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s
-        );
-
-        if (!nextDataMatch) {
-            throw new Error('Could not find __NEXT_DATA__');
-        }
-
-        const data = JSON.parse(nextDataMatch[1]);
-
-        console.log('Checking data: ', data);
-
-        // Locate album media
-        const images =
-            data?.props?.pageProps?.media ||
-            data?.props?.pageProps?.album?.images ||
-            [];
-
-        console.log('Checking images: ', images);
-
-        const urls = [];
-
-        Object.values(images).forEach(
-            (item) => {
-                const url =
-                    item?.url ||
-                    item?.link;
-
-                console.log('Checking URLL: ', url);
-
-                if (url) {
-                    urls.push(url);
+        // Wait for page to finish loading
+        await new Promise((resolve) => {
+            const listener = (tabId, changeInfo) => {
+                if (tabId === tab.id && changeInfo.status === 'complete') {
+                    browser.tabs.onUpdated.removeListener(listener);
+                    resolve();
                 }
-            }
-        );
+            };
+            browser.tabs.onUpdated.addListener(listener);
+        });
 
-        const uniqueUrls =
-            [...new Set(urls)];
+        // Small grace period for JS to finish setting up the store
+        await new Promise(r => setTimeout(r, 1500));
 
-        if (
-            !uniqueUrls.length
-        ) {
-            throw new Error(
-                'No album images found'
-            );
-        }
+        const injected = function() {
+            return new Promise(function(resolve) {
+                var seen = {};
+                var urls = [];
+                var maxAttempts = 60;
+                var attempts = 0;
 
-        console.log(
-            `Found ${uniqueUrls.length} images`
-        );
+                function collect() {
+                    Array.from(document.querySelectorAll('img.image-placeholder')).forEach(function(img) {
+                        var src = (img.currentSrc || img.src || '').split('?')[0];
+                        if (src && src.indexOf('i.imgur.com') !== -1 && !seen[src]) {
+                            seen[src] = true;
+                            urls.push(src);
+                        }
+                    });
+                }
 
-        for (const url of uniqueUrls) {
-            console.log(
-                'Downloading:',
-                url
-            );
+                function step() {
+                    // Check if we've hit the end sentinel
+                    var sentinel = document.querySelector('h2.BottomRecirc-label');
+                    if (sentinel) {
+                        collect();
+                        resolve({ source: 'scroll', urls: urls });
+                        return;
+                    }
 
-            await browser.downloads.download({
-                url
+                    // Bail out after max attempts
+                    if (attempts >= maxAttempts) {
+                        collect();
+                        resolve({ source: 'scroll_timeout', urls: urls });
+                        return;
+                    }
+
+                    collect();
+                    window.scrollBy(0, 800);
+                    attempts++;
+                    setTimeout(step, 300);
+                }
+
+                // Scroll back to top first, then start
+                window.scrollTo(0, 0);
+                setTimeout(step, 500);
             });
+        }.toString();
+
+        const results = await browser.tabs.executeScript(tab.id, {
+            code: '(' + injected + ')()'
+        });
+
+        const result = results?.[0];
+        console.log('Imgur extraction:', result?.source, 'found:', result?.urls?.length);
+
+        const downloadUrls = result?.urls || [];
+
+        if (!downloadUrls.length) throw new Error('No images found');
+
+        console.log('Downloading ' + downloadUrls.length + ' images');
+
+        for (var i = 0; i < downloadUrls.length; i++) {
+            var url = downloadUrls[i];
+            var filename = url.split('/').pop().split('?')[0];
+            await browser.downloads.download({ url: url, filename: filename });
         }
 
     } catch (err) {
-        console.error(
-            'Imgur album failed:',
-            err
-        );
+        console.error('Imgur album failed:', err.message, err.stack);  // ADD .message and .stack
+    } finally {
+        if (tab && tab.id) {
+            try { await browser.tabs.remove(tab.id); } catch (e) {}
+        }
     }
 }
-
 // -----------------------------
 // Message listener
 // -----------------------------
@@ -379,7 +395,7 @@ async function handleMessage(message) {
                 message.audioCandidates
             );
         } catch (err) {
-            console.error('Merge failed:',);
+            console.error('Merge failed:', err);        
         }
     }
 

@@ -9,6 +9,7 @@
   "permissions": [
     "downloads",
     "activeTab",
+    "tabs",
     "https://api.redgifs.com/*",
     "https://media.redgifs.com/*",
     "https://imgur.com/*",
@@ -16,6 +17,7 @@
   ],
   "background": {
     "scripts": [
+      "config.js",
       "vendor/ffmpeg/ffmpeg.js",
       "background.js"
     ],
@@ -23,7 +25,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://www.reddit.com/*"],
+      "matches": ["*://www.reddit.com/*", "*://old.reddit.com/*"],
       "js": ["content.js"]
     }
   ],
