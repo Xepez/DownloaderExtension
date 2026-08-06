@@ -18,3 +18,8 @@ Add the following files in the ffmpeg folder
  -  ffmpeg.js.map
  -  ffmpeg-core
  -  ffmpeg-core.wasm
+
+## TODO
+ - Fix bug with loading
+ - Add functionality to search results
+ - Review imgur downloading
