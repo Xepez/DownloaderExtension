@@ -6,13 +6,14 @@
 // Generic button creator
 //
 // buttonText: Title of the button
+// className: Class name of the button
 // action: The action to call in background.js
 // url: url to attach to the button (if not included will not include the onclick function)
 // -----------------------------
-function createDownloadButton(buttonText, action, url = null) {
+function createDownloadButton(buttonText, className, action = null, url = null) {
     const btn = document.createElement('button');
     btn.innerText = buttonText;
-    btn.className = `${buttonText}-download-btn`;
+    btn.className = className;
     btn.style.margin = '5px';
     btn.style.padding = '2px 5px';
     btn.style.fontSize = '11px';
@@ -62,7 +63,7 @@ function addDownloadButtonToPost(post) {
     const entry = post.querySelector('.entry');
     if (!entry) return;
 
-    entry.appendChild(createDownloadButton('Download Image', 'download', mediaLink));
+    entry.appendChild(createDownloadButton('Download Image', 'my-download-btn', 'download', mediaLink));
 }
 
 // -----------------------------
@@ -90,7 +91,9 @@ function addDownloadButtonsToComment(comment) {
         if (!isImage) return;
 
         // Add button right after the image link
-        link.insertAdjacentElement('afterend', createDownloadButton('Download Image', 'download', href));
+        const btn = createDownloadButton('Download Image', 'my-download-btn', 'download', href);
+
+        link.insertAdjacentElement('afterend', btn);
     });
 }
 
@@ -107,7 +110,7 @@ function addDownloadButtonToGallery(post) {
     }
 
     const postUrl = titleLink.href;
-    const btn = createDownloadButton('Download Gallery');
+    const btn = createDownloadButton('Download Gallery', 'my-gallery-download-btn');
     btn.onclick = async () => {
         try {
             // Reddit JSON endpoint
@@ -181,7 +184,7 @@ function addDownloadButtonToVideo(post) {
         return;
     }
 
-    const btn = createDownloadButton('Download Video');
+    const btn = createDownloadButton('Download Video', 'my-video-download-btn');
     btn.onclick = async () => {
         try {
             const jsonUrl = commentsLink.href.replace(/\/$/, '') + '.json';
@@ -262,7 +265,7 @@ function addDownloadButtonToRedgifs(post) {
         return;
     }
 
-    const btn = createDownloadButton('Download Redgifs');
+    const btn = createDownloadButton('Download Redgifs', 'my-redgifs-download-btn');
     btn.onclick = async () => {
         try {
             // TODO Move console logs to background or button create
@@ -305,7 +308,7 @@ function addDownloadButtonsToImgurAlbums(container) {
         }
 
         console.log('Found Imgur album:', href);
-        link.insertAdjacentElement('afterend', createDownloadButton('Download Album', 'downloadImgurAlbum', href));
+        link.insertAdjacentElement('afterend', createDownloadButton('Download Album', 'my-imgur-download-btn', 'downloadImgurAlbum', href));
     });
 }
 
