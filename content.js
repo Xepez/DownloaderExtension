@@ -23,13 +23,17 @@ const TypeOfPostEnum = Object.freeze({
 function addDownloadButtonToPost(post) {
     if (post.querySelector('.my-download-btn')) return;
 
+    // Check Type of Post
     const [type, href]  = checkTypeOfPost(post, TypeOfPostEnum.Post);
     if (type != TypeOfPostEnum.Post) return;
 
-    const entry = post.querySelector('.entry');
-    if (!entry) return;
+    // Setup Filename
+    let filename = extractFilenameFromPost(post);
+    filename = sanatizeFilenameAndAttachFileType(filename, href);
 
-    entry.appendChild(createDownloadButton('Download Image', 'my-download-btn', 'download', href));
+    // Setup Button and Append to Post
+    const entry = post.querySelector('.entry');
+    if (entry) entry.appendChild(createDownloadButton('Download Image', 'my-download-btn', 'download', href, filename));
 }
 
 // -----------------------------
@@ -38,38 +42,45 @@ function addDownloadButtonToPost(post) {
 function addDownloadButtonToGallery(post) {
     if (post.querySelector('.my-gallery-download-btn')) return;
 
+    // Check Type of Post
     const [type, href] = checkTypeOfPost(post, TypeOfPostEnum.Gallery);
     if (type != TypeOfPostEnum.Gallery) return;
 
+    // Setup Filename
+    let filename = extractFilenameFromPost(post);
+    filename = sanatizeFilenameAndAttachFileType(filename, href);
+
+    // Setup Button
     const btn = createDownloadButton('Download Gallery', 'my-gallery-download-btn');
-    createGalleryButtonOnClick(btn, href);
+    createGalleryButtonOnClick(btn, href, filename);
 
+    // Append to Post
     const entry = post.querySelector('.entry');
-    if (!entry) return;
-
-    entry.appendChild(btn);
+    if (entry) entry.appendChild(btn);
 }
 
 // -----------------------------
 // Handle video posts
 // -----------------------------
 function addDownloadButtonToVideo(post) {
-    // Prevent duplicate buttons
-    if (post.querySelector('.my-video-download-btn')) {
-        return;
-    }
+    // Prevent Duplicates
+    if (post.querySelector('.my-video-download-btn')) return;
 
+    // Check Type of Post
     const [type, href] = checkTypeOfPost(post, TypeOfPostEnum.Video);
     if (type != TypeOfPostEnum.Video) return;
 
+    // Setup Filename
+    let filename = extractFilenameFromPost(post);
+    filename = sanatizeFilenameAndAttachFileType(filename, href);
+
+    // Setup Button
     const btn = createDownloadButton('Download Video', 'my-video-download-btn');
-    createVideoButtonOnClick(btn, href);
+    createVideoButtonOnClick(btn, href, filename);
 
+    // Append to Post
     const entry = post.querySelector('.entry');
-
-    if (entry) {
-        entry.appendChild(btn);
-    }
+    if (entry) entry.appendChild(btn);
 }
 
 // -----------------------------
@@ -79,18 +90,24 @@ function addDownloadButtonToRedgifs(post) {
     // Prevent duplicate buttons
     if (post.querySelector('.my-redgifs-download-btn')) return;
 
+    // Check Type of Post
     const [type, href] = checkTypeOfPost(post, TypeOfPostEnum.Redgif);
     if (type != TypeOfPostEnum.Redgif) return;
 
-    const btn = createDownloadButton('Download Redgifs', 'my-redgifs-download-btn');
-    createRedgifButtonOnClick(btn, href);
+    // Setup Filename
+    let filename = extractFilenameFromPost(post);
+    filename = sanatizeFilenameAndAttachFileType(filename, href);
 
+    // Setup Button
+    const btn = createDownloadButton('Download Redgifs', 'my-redgifs-download-btn');
+    createRedgifButtonOnClick(btn, href, filename);
+
+    // Append to Post
     const entry = post.querySelector('.entry');
-    if (entry) {
-        entry.appendChild(btn);
-    }
+    if (entry) entry.appendChild(btn);
 }
 
+// TODO: Review and line up with rest of functions
 // -----------------------------
 // Handle comment images
 // -----------------------------
@@ -112,6 +129,7 @@ function addDownloadButtonToComment(comment) {
     });
 }
 
+// TODO: Review and line up with rest of functions
 // -----------------------------
 // Handle Imgur albums in text posts/comments
 // -----------------------------
@@ -134,11 +152,16 @@ function addDownloadButtonToGalleryComment(comment) {
 function addDownloadButtonToSearchResultPost(post) {
     const searchLink = post.querySelector('a.search-link');
     const searchResultFooter = post.querySelector('.search-result-footer');
-
-    console.log(searchLink);
-    console.log(searchResultFooter);
+    const videoSearchTitle = post.querySelector('a.search-title');
 
     if (!searchLink || !searchResultFooter) return;
+
+    // console.log(searchLink);
+    // console.log(searchResultFooter);
+
+    // Setup Filename
+    let initialFilename = extractFilenameFromSearchResult(videoSearchTitle);
+    
 
     const searchResultList = [TypeOfPostEnum.SearchResultRedgif, TypeOfPostEnum.SearchResultGallery, 
         TypeOfPostEnum.SearchResultVideo, TypeOfPostEnum.SearchResultImage]
@@ -152,25 +175,26 @@ function addDownloadButtonToSearchResultPost(post) {
         ) {
             if (searchResultFooter.querySelector(`.my-${type}-download-btn`)) return;
 
+            const filename = sanatizeFilenameAndAttachFileType(initialFilename, href);
+
             let btn = null;
             switch (type) {
                 case TypeOfPostEnum.SearchResultRedgif:
                     btn = createDownloadButton('Download Redgifs', `my-${type}-download-btn`);
-                    createRedgifButtonOnClick(btn, href);
+                    createRedgifButtonOnClick(btn, href, filename);
                     break;
                 case TypeOfPostEnum.SearchResultGallery:
                     btn = createDownloadButton('Download Gallery', `my-${type}-download-btn`);
-                    createGalleryButtonOnClick(btn, href);
+                    createGalleryButtonOnClick(btn, href, filename);
                     break;
                 case TypeOfPostEnum.SearchResultVideo:
-                    const videoSearchTitle = post.querySelector('a.search-title');
                     if (!videoSearchTitle || !videoSearchTitle.href) return;
 
                     btn = createDownloadButton('Download Video', `my-${type}-download-btn`);
-                    createVideoButtonOnClick(btn, videoSearchTitle.href);
+                    createVideoButtonOnClick(btn, videoSearchTitle.href, filename);
                     break;
                 case TypeOfPostEnum.SearchResultImage:
-                    btn = createDownloadButton('Download Image', `my-${type}-download-btn`, 'download', href);
+                    btn = createDownloadButton('Download Image', `my-${type}-download-btn`, 'download', href, filename);
                     break;
                 default:
                     break;
@@ -186,6 +210,35 @@ function addDownloadButtonToSearchResultPost(post) {
 }
 
 // --------------------------------------------- Helpers ---------------------------------------------
+// -----------------------------
+// Generic button creator
+//
+// buttonText: Title of the button
+// className: Class name of the button
+// action: The action to call in background.js
+// url: url to attach to the button (if not included will not include the onclick function)
+// -----------------------------
+function createDownloadButton(buttonText, className, action = null, url = null, customFileName = null) {
+    const btn = document.createElement('button');
+    btn.innerText = buttonText;
+    btn.className = className;
+    btn.style.margin = '5px';
+    btn.style.padding = '2px 5px';
+    btn.style.fontSize = '11px';
+    btn.style.cursor = 'pointer';
+
+    if (url !== null) {
+        btn.onclick = () => {
+            browser.runtime.sendMessage({
+                action: action,
+                url,
+                customFileName
+            });
+        };
+    }
+
+    return btn;
+}
 
 // -----------------------------
 // Gallery button onclick
@@ -193,7 +246,7 @@ function addDownloadButtonToSearchResultPost(post) {
 // btn: Button
 // href: The link of the Gallery line
 // -----------------------------
-function createGalleryButtonOnClick(btn, href) {
+function createGalleryButtonOnClick(btn, href, customFileName = null) {
     btn.onclick = async () => {
         try {
             // Reddit JSON endpoint
@@ -219,12 +272,15 @@ function createGalleryButtonOnClick(btn, href) {
                 })
                 .filter(Boolean);
 
-            urls.forEach((url) => {
+            for (let i = 0; i < urls.length; i++) {
+                const filename = `pg${i}_${customFileName}`
+
                 browser.runtime.sendMessage({
                     action: 'download',
-                    url,
+                    url: urls[i],
+                    customFileName: filename
                 });
-            });
+            }
 
             console.log(`Downloaded ${urls.length} gallery images` );
         } catch (err) {
@@ -241,15 +297,14 @@ function createGalleryButtonOnClick(btn, href) {
 // btn: Button
 // href: The link of the Video line
 // -----------------------------
-function createVideoButtonOnClick(btn, href) {
+function createVideoButtonOnClick(btn, href, customFileName = null) {
     btn.onclick = async () => {
         try {
             const jsonUrl = href.replace(/\/$/, '') + '.json';
-            console.log(jsonUrl);
+            // console.log(jsonUrl);
 
             const response = await fetch(jsonUrl);
-
-            console.log(response);
+            // console.log(response);
 
             if (!response.ok) {
                 throw new Error( `HTTP ${response.status}`);
@@ -288,7 +343,8 @@ function createVideoButtonOnClick(btn, href) {
             browser.runtime.sendMessage({
                 action: 'downloadVideoWithAudio',
                 videoUrl,
-                audioCandidates
+                audioCandidates,
+                customFileName
             });
 
         } catch (err) {
@@ -305,49 +361,21 @@ function createVideoButtonOnClick(btn, href) {
 // btn: Button
 // href: The link of the Redgif line
 // -----------------------------
-function createRedgifButtonOnClick(btn, href) {
+function createRedgifButtonOnClick(btn, href, customFileName = null) {
     btn.onclick = async () => {
         try {
             console.log('Sending Redgifs download:', href);
 
             browser.runtime.sendMessage({
                 action: 'downloadRedgifs',
-                pageUrl: href
+                url: href,
+                customFileName
             });
 
         } catch (err) {
             console.error('Redgifs download failed:', err);
         }
     };
-
-    return btn;
-}
-
-// -----------------------------
-// Generic button creator
-//
-// buttonText: Title of the button
-// className: Class name of the button
-// action: The action to call in background.js
-// url: url to attach to the button (if not included will not include the onclick function)
-// -----------------------------
-function createDownloadButton(buttonText, className, action = null, url = null) {
-    const btn = document.createElement('button');
-    btn.innerText = buttonText;
-    btn.className = className;
-    btn.style.margin = '5px';
-    btn.style.padding = '2px 5px';
-    btn.style.fontSize = '11px';
-    btn.style.cursor = 'pointer';
-
-    if (url !== null) {
-        btn.onclick = () => {
-            browser.runtime.sendMessage({
-                action: action,
-                url
-            });
-        };
-    }
 
     return btn;
 }
@@ -478,6 +506,50 @@ function checkTypeOfPost(post, postToCheckList) {
             
     return [null,  ''];
 
+}
+
+function extractFilenameFromPost(post) {
+    if (!post) return;
+
+    let retTitle;
+    const title = post.querySelector('a.title');
+    if (title.innerText) {
+        retTitle = title.innerText;
+    }
+
+    return retTitle;
+}
+
+function extractFilenameFromSearchResult(searchResultTitle) {
+    if (!searchResultTitle) return;
+
+    let retTitle;
+    if (searchResultTitle.innerText) {
+        retTitle = searchResultTitle.innerText;
+    }
+
+    return retTitle;
+}
+
+function sanatizeFilenameAndAttachFileType (filename, url) {
+    const fileType = 'png'; //getFileType(url);
+    filename = sanatizeFilename(filename);
+ 
+    //console.log(`Sanatized Name: ${filename}.${fileType}`);
+
+    return `${filename}.${fileType}`;
+}
+
+
+// Source: https://stackoverflow.com/questions/8485027/javascript-url-safe-filename-safe-string/8485137#8485137
+function sanatizeFilename(filename) {
+    return filename.replaceAll(" ", "_").replace(/[^a-z0-9_-]/gi, '').toLowerCase();
+}
+
+// TODO - Do I need this?
+// Source: https://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript/12900504#12900504
+function getFileType(url) {
+    return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
 }
 
 // --------------------------------------------- Process & Observer ---------------------------------------------

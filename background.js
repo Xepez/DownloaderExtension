@@ -77,7 +77,8 @@ async function fetchFile(url) {
 // -----------------------------
 async function mergeAndDownload(
     videoUrl,
-    audioCandidates
+    audioCandidates,
+    customFileName
 ) {
     await loadFFmpeg();
 
@@ -114,7 +115,7 @@ async function mergeAndDownload(
     }
     else {
         console.log('Trying video:', videoUrl);
-        
+
         const videoData = await fetchFile(videoUrl);
 
         console.log('Writing files...');
@@ -149,11 +150,12 @@ async function mergeAndDownload(
         );
 
         const objectUrl = URL.createObjectURL(blob);
+        const filename = customFileName ? customFileName : `reddit_video_${Date.now()}}`;
 
         const downloadId =
             await browser.downloads.download({
                 url: objectUrl,
-                filename:`reddit_video_${Date.now()}.mp4`,
+                filename:`${filename}.mp4`,
                 saveAs: false
             });
 
@@ -177,7 +179,7 @@ async function mergeAndDownload(
 // -----------------------------
 // Redgif Downloader
 // -----------------------------
-async function downloadRedgifs(pageUrl) {
+async function downloadRedgifs(pageUrl, customFileName = null) {
     try {
         console.log('Fetching Redgifs:', pageUrl);
 
@@ -247,9 +249,11 @@ async function downloadRedgifs(pageUrl) {
 
         console.log('Downloading:', videoUrl);
 
+        const filename = customFileName ? customFileName : gifId;
+
         await browser.downloads.download({
             url: videoUrl,
-            filename: `${gifId}.mp4`
+            filename: `${filename}.mp4`
         });
 
     } catch (err) {
@@ -260,7 +264,7 @@ async function downloadRedgifs(pageUrl) {
 // -----------------------------
 // Imgur Album Downloader
 // -----------------------------
-async function downloadImgurAlbum(albumUrl) {
+async function downloadImgurAlbum(albumUrl, customFileName = null) {
     let tab = null;
 
     console.log('Downloading Imgur Album');
@@ -349,8 +353,8 @@ async function downloadImgurAlbum(albumUrl) {
 
         for (var i = 0; i < downloadUrls.length; i++) {
             var url = downloadUrls[i];
-            var filename = url.split('/').pop().split('?')[0];
-            await browser.downloads.download({ url: url, filename: filename });
+            var filename = customFileName ? customFileName : url.split('/').pop().split('?')[0];
+            await browser.downloads.download({ url: url, filename: `pg${i}_${filename}`});
         }
 
     } catch (err) {
@@ -365,7 +369,7 @@ async function downloadImgurAlbum(albumUrl) {
 // Message listener
 // -----------------------------
 browser.runtime.onMessage.addListener(
-    (message) => {
+    (message, c) => {
         console.log('MESSAGE RECEIVED', message);
 
         return handleMessage(message);
@@ -376,16 +380,11 @@ async function handleMessage(message) {
     // Regular Download
     if (message.action === 'download') {
         const url = message.url;
-
-        const filename =
-            url
-                .split('/')
-                .pop()
-                .split('?')[0];
+        const filename =  message.customFileName ?  `${message.customFileName}.png` : url.split('/').pop().split('?')[0];
 
         return browser.downloads.download({
             url,
-            filename
+            filename: filename
         });
     }
 
@@ -394,7 +393,8 @@ async function handleMessage(message) {
         try {
             await mergeAndDownload(
                 message.videoUrl,
-                message.audioCandidates
+                message.audioCandidates,
+                message.customFileName
             );
         } catch (err) {
             console.error('Merge failed:', err);        
@@ -403,11 +403,11 @@ async function handleMessage(message) {
 
     // Red Gif Download
     if (message.action === 'downloadRedgifs') {
-        downloadRedgifs(message.pageUrl);
+        downloadRedgifs(message.pageUrl, message.customFileName);
     }
 
     // Imgur Ablum Downloader
     if (message.action === 'downloadImgurAlbum') {
-        downloadImgurAlbum(message.albumUrl);
+        downloadImgurAlbum(message.albumUrl, message.customFileName);
     }
 }
