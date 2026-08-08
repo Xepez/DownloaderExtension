@@ -113,6 +113,8 @@ async function mergeAndDownload(
             });
     }
     else {
+        console.log('Trying video:', videoUrl);
+        
         const videoData = await fetchFile(videoUrl);
 
         console.log('Writing files...');

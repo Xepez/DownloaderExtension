@@ -133,25 +133,24 @@ function addDownloadButtonToGalleryComment(comment) {
 // -----------------------------
 function addDownloadButtonToSearchResultPost(post) {
     const searchLink = post.querySelector('a.search-link');
-    if (!searchLink) return;
+    const searchResultFooter = post.querySelector('.search-result-footer');
 
     console.log(searchLink);
+    console.log(searchResultFooter);
+
+    if (!searchLink || !searchResultFooter) return;
+
     const searchResultList = [TypeOfPostEnum.SearchResultRedgif, TypeOfPostEnum.SearchResultGallery, 
         TypeOfPostEnum.SearchResultVideo, TypeOfPostEnum.SearchResultImage]
 
     for (let x = 0; x < searchResultList.length; x++) {
-        console.log(searchResultList);
-        console.log(searchResultList[x]);
         const [type, href] = checkTypeOfPost(searchLink, searchResultList[x]);
         if (type === TypeOfPostEnum.SearchResultRedgif 
             || type === TypeOfPostEnum.SearchResultGallery
             || type === TypeOfPostEnum.SearchResultVideo 
             || type === TypeOfPostEnum.SearchResultImage
         ) {
-            if (post.querySelector(`.my-${type}-download-btn`)) return;
-
-            // const entry = post.querySelector('.entry');
-            // if (!entry) return;
+            if (searchResultFooter.querySelector(`.my-${type}-download-btn`)) return;
 
             let btn = null;
             switch (type) {
@@ -164,11 +163,11 @@ function addDownloadButtonToSearchResultPost(post) {
                     createGalleryButtonOnClick(btn, href);
                     break;
                 case TypeOfPostEnum.SearchResultVideo:
-                    const test = post.querySelector('a.search-title');
-
+                    const videoSearchTitle = post.querySelector('a.search-title');
+                    if (!videoSearchTitle || !videoSearchTitle.href) return;
 
                     btn = createDownloadButton('Download Video', `my-${type}-download-btn`);
-                    createVideoButtonOnClick(btn, href);
+                    createVideoButtonOnClick(btn, videoSearchTitle.href);
                     break;
                 case TypeOfPostEnum.SearchResultImage:
                     btn = createDownloadButton('Download Image', `my-${type}-download-btn`, 'download', href);
@@ -179,8 +178,7 @@ function addDownloadButtonToSearchResultPost(post) {
 
             if (btn === null) return;
 
-            // entry.appendChild(btn);
-            post.appendChild(btn);
+            searchResultFooter.appendChild(btn);
         } else {
             console.log(`ERROR: Returned type of ${type}`);
         }
@@ -250,6 +248,8 @@ function createVideoButtonOnClick(btn, href) {
             console.log(jsonUrl);
 
             const response = await fetch(jsonUrl);
+
+            console.log(response);
 
             if (!response.ok) {
                 throw new Error( `HTTP ${response.status}`);
@@ -515,7 +515,7 @@ function processPage() {
 
     // Search Results
     const searchResultPosts = document.querySelectorAll(
-        '.search-result-footer'
+        '.search-result'
     );
     searchResultPosts.forEach((text) => {
         addDownloadButtonToSearchResultPost(text);
