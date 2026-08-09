@@ -386,11 +386,11 @@ async function handleMessage(message) {
 
     // Red Gif Download
     if (message.action === 'downloadRedgifs') {
-        downloadRedgifs(message.pageUrl, message.customFileName);
+        downloadRedgifs(message.url, message.customFileName);
     }
 
     // Imgur Ablum Downloader
     if (message.action === 'downloadImgurAlbum') {
-        downloadImgurAlbum(message.albumUrl, message.customFileName);
+        downloadImgurAlbum(message.url, message.customFileName);
     }
 }

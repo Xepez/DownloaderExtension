@@ -131,12 +131,9 @@ function addDownloadButtonToComment(comment) {
         // Check Type of Post
         const [type, href] = checkTypeOfPost(link, TypeOfPostEnum.Comment);
         if (type != TypeOfPostEnum.Comment) return;
-
-        // Setup Button
-        const btn = createDownloadButton('Download Image', 'my-download-btn', 'download', href);
         
-        // Append to Post
-        link.appendChild(btn);
+        // Setup Button and Append to Post
+        link.appendChild(createDownloadButton('Download Image', 'my-download-btn', 'download', href));
     });
 }
 
@@ -172,9 +169,6 @@ function addDownloadButtonToSearchResultPost(post) {
     const videoSearchTitle = post.querySelector('a.search-title');
 
     if (!searchLink || !searchResultFooter) return;
-
-    // console.log(searchLink);
-    // console.log(searchResultFooter);
 
     // Setup Filename
     let initialFilename = extractFilenameFromSearchResult(videoSearchTitle);
@@ -320,10 +314,7 @@ function createVideoButtonOnClick(btn, href, customFileName = null) {
     btn.onclick = async () => {
         try {
             const jsonUrl = href.replace(/\/$/, '') + '.json';
-            // console.log(jsonUrl);
-
             const response = await fetch(jsonUrl);
-            // console.log(response);
 
             if (!response.ok) {
                 throw new Error( `HTTP ${response.status}`);
@@ -411,7 +402,7 @@ function checkTypeOfPost(post, postToCheckList) {
 
     switch (postToCheckList) {
         case TypeOfPostEnum.Post:
-            // Preview / Expando Image
+            // Check for thumbnail
             const thumbnailLink = post.querySelector('a.thumbnail');
             if (thumbnailLink 
                 && thumbnailLink.href
@@ -420,10 +411,22 @@ function checkTypeOfPost(post, postToCheckList) {
                 href = thumbnailLink.href;
             }
 
+            // Check for image expando's / preview's
             if(!href) {
                 const imageLink = post.querySelector('.expando img, .preview img');
                 if (imageLink?.src) {
                     href = imageLink.src;
+                }
+            }
+
+            // Check for title images (Exclude other types of media that are not images) // TODO Could be cleaned up / more generic
+            if (!href) {
+                const titleLink = post.querySelector('a.title');
+                if (titleLink?.href 
+                    && !titleLink.href.includes("gallery") 
+                    && !titleLink.href.includes('v.redd.it')
+                    && !titleLink.href.includes('redgifs.com')) {
+                    href = titleLink.href;
                 }
             }
 
@@ -558,7 +561,7 @@ function sanatizeFilenameAndAttachFileType (filename, url) {
     const fileType = 'png'; //getFileType(url);
     filename = sanatizeFilename(filename);
  
-    //console.log(`Sanatized Name: ${filename}.${fileType}`);
+    console.log(`Sanatized Name: ${filename}.${fileType}`);
 
     return `${filename}.${fileType}`;
 }
