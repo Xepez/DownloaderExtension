@@ -25,30 +25,26 @@ async function loadFFmpeg() {
     // Verify files are reachable
     try {
         const coreResp = await fetch(coreURL);
-
         console.log('core.js status:', coreResp.status);
 
         const wasmResp = await fetch(wasmURL);
-
         console.log('wasm status:', wasmResp.status);
     } catch (err) {
         console.error('Failed fetching ffmpeg files', err);
         throw err;
     }
 
+    // Load ffmpeg
     try {
-        const workerURL = browser.runtime.getURL('vendor/ffmpeg/ffmpeg-core.js');
-
         await ffmpeg.load({
             coreURL,
             wasmURL,
-            workerURL
+            coreURL
         });
 
         console.log('FFmpeg loaded successfully');
 
         ffmpegLoaded = true;
-
     } catch (err) {
         console.error('ffmpeg.load() failed:', err);
         throw err;
@@ -62,24 +58,16 @@ async function fetchFile(url) {
     const response = await fetch(url);
 
     if (!response.ok) {
-        throw new Error(
-            `Failed to fetch ${url}`
-        );
+        throw new Error(`Failed to fetch ${url}`);
     }
 
-    return new Uint8Array(
-        await response.arrayBuffer()
-    );
+    return new Uint8Array(await response.arrayBuffer());
 }
 
 // -----------------------------
 // Merge Reddit video + audio
 // -----------------------------
-async function mergeAndDownload(
-    videoUrl,
-    audioCandidates,
-    customFileName
-) {
+async function mergeAndDownload(videoUrl, audioCandidates, customFileName) {
     await loadFFmpeg();
 
     console.log('Fetching video...');
@@ -87,12 +75,12 @@ async function mergeAndDownload(
     let audioData = null;
     let selectedAudio = null;
 
+    // Try audio candidates
     for (const candidate of audioCandidates) {
         try {
             console.log('Trying audio:', candidate);
 
             audioData = await fetchFile(candidate);
-
             selectedAudio = candidate;
 
             console.log('Audio success:', candidate);
@@ -103,17 +91,20 @@ async function mergeAndDownload(
         }
     }
 
+    // Setup custom or default filename
+    const filename = customFileName ? customFileName : `reddit_video_${Date.now()}}`;
+
+    // If no audio file download just video file
     if (!audioData) {
         console.log('No working audio stream found');
 
         const downloadId =
             await browser.downloads.download({
                 url: videoUrl,
-                filename:`reddit_video_${Date.now()}.mp4`,
+                filename:`${filename}.mp4`,
                 saveAs: false
             });
-    }
-    else {
+    } else {
         console.log('Trying video:', videoUrl);
 
         const videoData = await fetchFile(videoUrl);
@@ -150,8 +141,6 @@ async function mergeAndDownload(
         );
 
         const objectUrl = URL.createObjectURL(blob);
-        const filename = customFileName ? customFileName : `reddit_video_${Date.now()}}`;
-
         const downloadId =
             await browser.downloads.download({
                 url: objectUrl,
@@ -210,9 +199,7 @@ async function downloadRedgifs(pageUrl, customFileName = null) {
         }
 
         const authData = await authResponse.json();
-
         const token = authData?.token;
-
         if (!token) {
             throw new Error('No Redgifs token returned');
         }
@@ -227,8 +214,7 @@ async function downloadRedgifs(pageUrl, customFileName = null) {
                 `https://api.redgifs.com/v2/gifs/${gifId}`,
                 {
                     headers: {
-                        Authorization:
-                            `Bearer ${token}`
+                        Authorization: `Bearer ${token}`
                     }
                 }
             );
@@ -238,11 +224,8 @@ async function downloadRedgifs(pageUrl, customFileName = null) {
         }
 
         const data = await response.json();
-
         const urls = data?.gif?.urls;
-
         const videoUrl = urls?.hd || urls?.sd;
-
         if (!videoUrl) {
             throw new Error('No downloadable video URL found');
         }
@@ -255,7 +238,6 @@ async function downloadRedgifs(pageUrl, customFileName = null) {
             url: videoUrl,
             filename: `${filename}.mp4`
         });
-
     } catch (err) {
         console.error('Redgifs failed:', err);
     }
@@ -266,14 +248,15 @@ async function downloadRedgifs(pageUrl, customFileName = null) {
 // -----------------------------
 async function downloadImgurAlbum(albumUrl, customFileName = null) {
     let tab = null;
-
     console.log('Downloading Imgur Album');
 
     try {
         console.log('Opening Imgur album:', albumUrl);
 
         const match = albumUrl.match(/imgur\.com\/(?:a|gallery)\/([^/?#]+)/i);
-        if (!match) throw new Error('Could not parse Imgur album ID');
+        if (!match) {
+            throw new Error('Could not parse Imgur album ID');
+        }
 
         tab = await browser.tabs.create({ url: albumUrl, active: false });
 
@@ -287,6 +270,7 @@ async function downloadImgurAlbum(albumUrl, customFileName = null) {
                     resolve();
                 }
             };
+
             browser.tabs.onUpdated.addListener(listener);
         });
 
@@ -369,9 +353,8 @@ async function downloadImgurAlbum(albumUrl, customFileName = null) {
 // Message listener
 // -----------------------------
 browser.runtime.onMessage.addListener(
-    (message, c) => {
+    (message) => {
         console.log('MESSAGE RECEIVED', message);
-
         return handleMessage(message);
     }
 );
@@ -380,7 +363,7 @@ async function handleMessage(message) {
     // Regular Download
     if (message.action === 'download') {
         const url = message.url;
-        const filename =  message.customFileName ?  `${message.customFileName}.png` : url.split('/').pop().split('?')[0];
+        const filename =  message.customFileName ?  `${message.customFileName}` : url.split('/').pop().split('?')[0];
 
         return browser.downloads.download({
             url,

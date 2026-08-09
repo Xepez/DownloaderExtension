@@ -1,5 +1,12 @@
-// TODO List:
-// 1. Search Results - ".search-result"
+/*
+
+TODO List:
+- Test Imgur comment download
+- Try to get file type reader working
+- Continue to clean-up background.js
+
+*/
+
 const TypeOfPostEnum = Object.freeze({
     Post: 0,
     Gallery: 1,
@@ -16,7 +23,6 @@ const TypeOfPostEnum = Object.freeze({
 
 
 // --------------------------------------------- Add Buttons to Specific Types of Posts ---------------------------------------------
-
 // -----------------------------
 // Handle image/video posts
 // -----------------------------
@@ -107,7 +113,6 @@ function addDownloadButtonToRedgifs(post) {
     if (entry) entry.appendChild(btn);
 }
 
-// TODO: Review and line up with rest of functions
 // -----------------------------
 // Handle comment images
 // -----------------------------
@@ -120,29 +125,41 @@ function addDownloadButtonToComment(comment) {
     const links = comment.querySelectorAll('a[href]:not(.title)');
 
     links.forEach((link) => {
+        // Prevent duplicate buttons
+        if (link.querySelector('.my-download-btn')) return;
+
+        // Check Type of Post
         const [type, href] = checkTypeOfPost(link, TypeOfPostEnum.Comment);
         if (type != TypeOfPostEnum.Comment) return;
 
-        // Add button right after the image link
+        // Setup Button
         const btn = createDownloadButton('Download Image', 'my-download-btn', 'download', href);
-        link.insertAdjacentElement('afterend', btn);
+        
+        // Append to Post
+        link.appendChild(btn);
     });
 }
 
-// TODO: Review and line up with rest of functions
+// TODO: Still needs additional testing to confirm working
 // -----------------------------
 // Handle Imgur albums in text posts/comments
 // -----------------------------
 function addDownloadButtonToGalleryComment(comment) {
+    // Prevent reprocessing
+    if (comment.dataset.downloadProcessed) return;
+    comment.dataset.downloadProcessed = true;
+
     const links = comment.querySelectorAll('a[href]');
 
     links.forEach((link) => {
-        if (!link.nextElementSibling?.classList.contains('my-imgur-download-btn')) return;
+        if (link.querySelector('.my-imgur-download-btn')) return;
 
+        // Check Type of Post
         const [type, href] = checkTypeOfPost(link, TypeOfPostEnum.GalleryComment);
         if (type !== TypeOfPostEnum.GalleryComment) return;
 
-        link.insertAdjacentElement('afterend', createDownloadButton('Download Album', 'my-imgur-download-btn', 'downloadImgurAlbum', href));
+        // Setup Button and Append to Post
+        link.appendChild(createDownloadButton('Download Album', 'my-imgur-download-btn', 'downloadImgurAlbum', href));
     });
 }
 
@@ -161,7 +178,6 @@ function addDownloadButtonToSearchResultPost(post) {
 
     // Setup Filename
     let initialFilename = extractFilenameFromSearchResult(videoSearchTitle);
-    
 
     const searchResultList = [TypeOfPostEnum.SearchResultRedgif, TypeOfPostEnum.SearchResultGallery, 
         TypeOfPostEnum.SearchResultVideo, TypeOfPostEnum.SearchResultImage]
@@ -215,8 +231,9 @@ function addDownloadButtonToSearchResultPost(post) {
 //
 // buttonText: Title of the button
 // className: Class name of the button
-// action: The action to call in background.js
-// url: url to attach to the button (if not included will not include the onclick function)
+// action (optional): The action to call in background.js
+// url (optional): url to attach to the button (if not included will not include the onclick function)
+// customFileName (optional): The name of the file downloaded if one is provided
 // -----------------------------
 function createDownloadButton(buttonText, className, action = null, url = null, customFileName = null) {
     const btn = document.createElement('button');
@@ -245,6 +262,7 @@ function createDownloadButton(buttonText, className, action = null, url = null, 
 //
 // btn: Button
 // href: The link of the Gallery line
+// customFileName (optional): The name of the file downloaded if one is provided
 // -----------------------------
 function createGalleryButtonOnClick(btn, href, customFileName = null) {
     btn.onclick = async () => {
@@ -296,6 +314,7 @@ function createGalleryButtonOnClick(btn, href, customFileName = null) {
 //
 // btn: Button
 // href: The link of the Video line
+// customFileName (optional): The name of the file downloaded if one is provided
 // -----------------------------
 function createVideoButtonOnClick(btn, href, customFileName = null) {
     btn.onclick = async () => {
@@ -360,6 +379,7 @@ function createVideoButtonOnClick(btn, href, customFileName = null) {
 //
 // btn: Button
 // href: The link of the Redgif line
+// customFileName (optional): The name of the file downloaded if one is provided
 // -----------------------------
 function createRedgifButtonOnClick(btn, href, customFileName = null) {
     btn.onclick = async () => {
@@ -508,6 +528,7 @@ function checkTypeOfPost(post, postToCheckList) {
 
 }
 
+// Extract the post title from a post
 function extractFilenameFromPost(post) {
     if (!post) return;
 
@@ -520,6 +541,7 @@ function extractFilenameFromPost(post) {
     return retTitle;
 }
 
+// Extract the post title from a search result
 function extractFilenameFromSearchResult(searchResultTitle) {
     if (!searchResultTitle) return;
 
@@ -531,6 +553,7 @@ function extractFilenameFromSearchResult(searchResultTitle) {
     return retTitle;
 }
 
+// Clean up custom file names and attach the type of file to the filename from the url
 function sanatizeFilenameAndAttachFileType (filename, url) {
     const fileType = 'png'; //getFileType(url);
     filename = sanatizeFilename(filename);
