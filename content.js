@@ -8,218 +8,82 @@ TODO List:
 */
 
 const TypeOfPostEnum = Object.freeze({
-    Post: 0,
-    Gallery: 1,
-    Video: 2,
-    Redgif: 3,
-    Comment: 4,
-    GalleryComment: 5,
-    SearchResult: 6,
-    SearchResultRedgif: 7,
-    SearchResultGallery: 8,
-    SearchResultVideo: 9,
-    SearchResultImage: 10
+    Post: 'Post',
+    Gallery: 'Gallery',
+    Video: 'Video',
+    Redgif: 'Redgif',
+    Comment: 'Comment',
+    CommentGallery: 'Comment Gallery',
 });
 
 
-// --------------------------------------------- Add Buttons to Specific Types of Posts ---------------------------------------------
-// -----------------------------
-// Handle image/video posts
-// -----------------------------
-function addDownloadButtonToPost(post) {
-    if (post.querySelector('.my-download-btn')) return;
+// --------------------------------------------- Add To Posts/Comments/Search Results ---------------------------------------------
+function addToPost(post) {
+    if (!post) return;
 
-    // Check Type of Post
-    const [type, href]  = checkTypeOfPost(post, TypeOfPostEnum.Post);
-    if (type != TypeOfPostEnum.Post) return;
+    // Check Type of Post and Extract Post Url
+    const [typeOfPost, href] = checkTypeOfPostandExtractHref(post);
+    if (!typeOfPost || !href || post.querySelector(`.my-${typeOfPost}-download-btn`)) return;
 
     // Setup Filename
     let filename = extractFilenameFromPost(post);
     filename = sanatizeFilenameAndAttachFileType(filename, href);
+
+    // Setup Button
+    const btn = setupButton(href, typeOfPost, filename);
 
     // Setup Button and Append to Post
     const entry = post.querySelector('.entry');
-    if (entry) entry.appendChild(createDownloadButton('Download Image', 'my-download-btn', 'download', href, filename));
-}
-
-// -----------------------------
-// Handle Reddit galleries
-// -----------------------------
-function addDownloadButtonToGallery(post) {
-    if (post.querySelector('.my-gallery-download-btn')) return;
-
-    // Check Type of Post
-    const [type, href] = checkTypeOfPost(post, TypeOfPostEnum.Gallery);
-    if (type != TypeOfPostEnum.Gallery) return;
-
-    // Setup Filename
-    let filename = extractFilenameFromPost(post);
-    filename = sanatizeFilenameAndAttachFileType(filename, href);
-
-    // Setup Button
-    const btn = createDownloadButton('Download Gallery', 'my-gallery-download-btn');
-    createGalleryButtonOnClick(btn, href, filename);
-
-    // Append to Post
-    const entry = post.querySelector('.entry');
     if (entry) entry.appendChild(btn);
 }
 
-// -----------------------------
-// Handle video posts
-// -----------------------------
-function addDownloadButtonToVideo(post) {
-    // Prevent Duplicates
-    if (post.querySelector('.my-video-download-btn')) return;
+function addToComment(comment) {
+    if (!comment) return;
 
-    // Check Type of Post
-    const [type, href] = checkTypeOfPost(post, TypeOfPostEnum.Video);
-    if (type != TypeOfPostEnum.Video) return;
-
-    // Setup Filename
-    let filename = extractFilenameFromPost(post);
-    filename = sanatizeFilenameAndAttachFileType(filename, href);
-
-    // Setup Button
-    const btn = createDownloadButton('Download Video', 'my-video-download-btn');
-    createVideoButtonOnClick(btn, href, filename);
-
-    // Append to Post
-    const entry = post.querySelector('.entry');
-    if (entry) entry.appendChild(btn);
-}
-
-// -----------------------------
-// Handle Redgifs posts
-// -----------------------------
-function addDownloadButtonToRedgifs(post) {
-    // Prevent duplicate buttons
-    if (post.querySelector('.my-redgifs-download-btn')) return;
-
-    // Check Type of Post
-    const [type, href] = checkTypeOfPost(post, TypeOfPostEnum.Redgif);
-    if (type != TypeOfPostEnum.Redgif) return;
-
-    // Setup Filename
-    let filename = extractFilenameFromPost(post);
-    filename = sanatizeFilenameAndAttachFileType(filename, href);
-
-    // Setup Button
-    const btn = createDownloadButton('Download Redgifs', 'my-redgifs-download-btn');
-    createRedgifButtonOnClick(btn, href, filename);
-
-    // Append to Post
-    const entry = post.querySelector('.entry');
-    if (entry) entry.appendChild(btn);
-}
-
-// -----------------------------
-// Handle comment images
-// -----------------------------
-function addDownloadButtonToComment(comment) {
-    // Prevent reprocessing
+    // Prevent reprocessing 
     if (comment.dataset.downloadProcessed) return;
     comment.dataset.downloadProcessed = true;
 
     // Find links inside comments
     const links = comment.querySelectorAll('a[href]:not(.title)');
-
     links.forEach((link) => {
-        // Prevent duplicate buttons
-        if (link.querySelector('.my-download-btn')) return;
+        // Check Type of Comment and Extract Comment Url
+        const [typeOfPost, href] = checkTypeOfCommentandExtractHref(link);
+        if (!typeOfPost || !href || comment.querySelector(`.my-${typeOfPost}-download-btn`)) return;
 
-        // Check Type of Post
-        const [type, href] = checkTypeOfPost(link, TypeOfPostEnum.Comment);
-        if (type != TypeOfPostEnum.Comment) return;
-        
+        // Setup Button
+        const btn = setupButton(href, typeOfPost);
+
         // Setup Button and Append to Post
-        link.appendChild(createDownloadButton('Download Image', 'my-download-btn', 'download', href));
+        link.appendChild(btn);
     });
 }
 
-// TODO: Still needs additional testing to confirm working
-// -----------------------------
-// Handle Imgur albums in text posts/comments
-// -----------------------------
-function addDownloadButtonToGalleryComment(comment) {
-    // Prevent reprocessing
-    if (comment.dataset.downloadProcessed) return;
-    comment.dataset.downloadProcessed = true;
+function addToSearchResult(searchResult) {
+    if (!searchResult) return;
 
-    const links = comment.querySelectorAll('a[href]');
-
-    links.forEach((link) => {
-        if (link.querySelector('.my-imgur-download-btn')) return;
-
-        // Check Type of Post
-        const [type, href] = checkTypeOfPost(link, TypeOfPostEnum.GalleryComment);
-        if (type !== TypeOfPostEnum.GalleryComment) return;
-
-        // Setup Button and Append to Post
-        link.appendChild(createDownloadButton('Download Album', 'my-imgur-download-btn', 'downloadImgurAlbum', href));
-    });
-}
-
-// -----------------------------
-// Handle Search Results
-// -----------------------------
-function addDownloadButtonToSearchResultPost(post) {
-    const searchLink = post.querySelector('a.search-link');
-    const searchResultFooter = post.querySelector('.search-result-footer');
-    const videoSearchTitle = post.querySelector('a.search-title');
+    const searchLink = searchResult.querySelector('a.search-link');
+    const searchResultFooter = searchResult.querySelector('.search-result-footer');
+    const videoSearchTitle = searchResult.querySelector('a.search-title');
 
     if (!searchLink || !searchResultFooter) return;
 
+    // Check Type of Post and Extract Post Url
+    const [typeOfPost, href] = checkTypeOfSearchResultandExtractHref(searchLink);
+    if (!typeOfPost || !href || searchResultFooter.querySelector(`.my-${typeOfPost}-download-btn`)) return;
+
     // Setup Filename
-    let initialFilename = extractFilenameFromSearchResult(videoSearchTitle);
+    let initialFilename = extractFilenameFromSearchResult(videoSearchTitle)
+    filename = sanatizeFilenameAndAttachFileType(filename, href);
 
-    const searchResultList = [TypeOfPostEnum.SearchResultRedgif, TypeOfPostEnum.SearchResultGallery, 
-        TypeOfPostEnum.SearchResultVideo, TypeOfPostEnum.SearchResultImage]
+    // Setup Button
+    const btn = setupButton(href, typeOfPost, filename);
 
-    for (let x = 0; x < searchResultList.length; x++) {
-        const [type, href] = checkTypeOfPost(searchLink, searchResultList[x]);
-        if (type === TypeOfPostEnum.SearchResultRedgif 
-            || type === TypeOfPostEnum.SearchResultGallery
-            || type === TypeOfPostEnum.SearchResultVideo 
-            || type === TypeOfPostEnum.SearchResultImage
-        ) {
-            if (searchResultFooter.querySelector(`.my-${type}-download-btn`)) return;
-
-            const filename = sanatizeFilenameAndAttachFileType(initialFilename, href);
-
-            let btn = null;
-            switch (type) {
-                case TypeOfPostEnum.SearchResultRedgif:
-                    btn = createDownloadButton('Download Redgifs', `my-${type}-download-btn`);
-                    createRedgifButtonOnClick(btn, href, filename);
-                    break;
-                case TypeOfPostEnum.SearchResultGallery:
-                    btn = createDownloadButton('Download Gallery', `my-${type}-download-btn`);
-                    createGalleryButtonOnClick(btn, href, filename);
-                    break;
-                case TypeOfPostEnum.SearchResultVideo:
-                    if (!videoSearchTitle || !videoSearchTitle.href) return;
-
-                    btn = createDownloadButton('Download Video', `my-${type}-download-btn`);
-                    createVideoButtonOnClick(btn, videoSearchTitle.href, filename);
-                    break;
-                case TypeOfPostEnum.SearchResultImage:
-                    btn = createDownloadButton('Download Image', `my-${type}-download-btn`, 'download', href, filename);
-                    break;
-                default:
-                    break;
-            }
-
-            if (btn === null) return;
-
-            searchResultFooter.appendChild(btn);
-        } else {
-            console.log(`ERROR: Returned type of ${type}`);
-        }
-    }
+    // Setup Button and Append to Post
+    return searchResultFooter.appendChild(btn);
 }
 
-// --------------------------------------------- Helpers ---------------------------------------------
+// --------------------------------------------- Download Buttons ---------------------------------------------
 // -----------------------------
 // Generic button creator
 //
@@ -238,15 +102,24 @@ function createDownloadButton(buttonText, className, action = null, url = null, 
     btn.style.fontSize = '11px';
     btn.style.cursor = 'pointer';
 
-    if (url !== null) {
-        btn.onclick = () => {
-            browser.runtime.sendMessage({
-                action: action,
-                url,
-                customFileName
-            });
-        };
-    }
+    return btn;
+}
+
+// -----------------------------
+// Default button onclick
+//
+// btn: Button
+// href: The link of the Gallery line
+// customFileName (optional): The name of the file downloaded if one is provided
+// -----------------------------
+function createDefaultButtonOnClick(btn, href, customFileName = null) {
+    btn.onclick = () => {
+        browser.runtime.sendMessage({
+            action: 'download',
+            url: href,
+            customFileName
+        });
+    };
 
     return btn;
 }
@@ -392,144 +265,161 @@ function createRedgifButtonOnClick(btn, href, customFileName = null) {
 }
 
 // -----------------------------
+// Comment Gallery button onclick
+//
+// btn: Button
+// href: The link of the Gallery line
+// customFileName (optional): The name of the file downloaded if one is provided
+// -----------------------------
+function createImgurAlbumButtonOnClick(btn, href, customFileName = null) {
+    btn.onclick = () => {
+        browser.runtime.sendMessage({
+            action: 'downloadImgurAlbum',
+            url: href,
+            customFileName
+        });
+    };
+
+    return btn;
+}
+
+// -----------------------------
+// Handle image/video posts
+// -----------------------------
+function setupButton(href, typeOfPost, filename = null) {
+    let btn = createDownloadButton(`Download ${typeOfPost}`, `my-${typeOfPost}-download-btn`);
+
+    switch(typeOfPost) {
+        case TypeOfPostEnum.Post:
+        case TypeOfPostEnum.Comment:
+            return createDefaultButtonOnClick(btn, href, filename);
+        case TypeOfPostEnum.Gallery:
+            return createGalleryButtonOnClick(btn, href, filename);
+        case TypeOfPostEnum.Video:
+            return createVideoButtonOnClick(btn, href, filename);
+        case TypeOfPostEnum.Redgif:
+            return createRedgifButtonOnClick(btn, href, filename);
+        case TypeOfPostEnum.CommentGallery:
+            return createImgurAlbumButtonOnClick(btn, href, filename);
+        default:
+            return;
+    }
+}
+
+// --------------------------------------------- Check Type ---------------------------------------------
+// -----------------------------
 // Check the type of post and extract href
 //
 // post: Post to check against
-// postToCheckList: Type of post to check against
 // -----------------------------
-function checkTypeOfPost(post, postToCheckList) {
+function checkTypeOfPostandExtractHref(post) {
     let href = null;
 
-    switch (postToCheckList) {
-        case TypeOfPostEnum.Post:
-            // Check for thumbnail
-            const thumbnailLink = post.querySelector('a.thumbnail');
-            if (thumbnailLink 
-                && thumbnailLink.href
-                && /\.(jpg|jpeg|png|gif|webp)$/i.test(thumbnailLink.href)
-            ) {
-                href = thumbnailLink.href;
-            }
+    // Post Title Check
+    const postTitleLink = post.querySelector("a.title");
+    if (postTitleLink && postTitleLink?.href) 
+    {
+        const postTitleHref = postTitleLink?.href.toLowerCase();
 
-            // Check for image expando's / preview's
-            if(!href) {
-                const imageLink = post.querySelector('.expando img, .preview img');
-                if (imageLink?.src) {
-                    href = imageLink.src;
-                }
-            }
-
-            // Check for title images (Exclude other types of media that are not images) // TODO Could be cleaned up / more generic
-            if (!href) {
-                const titleLink = post.querySelector('a.title');
-                if (titleLink?.href 
-                    && !titleLink.href.includes("gallery") 
-                    && !titleLink.href.includes('v.redd.it')
-                    && !titleLink.href.includes('redgifs.com')) {
-                    href = titleLink.href;
-                }
-            }
-
-            if (href) return [postToCheckList, href];
-
-            break;
-        case TypeOfPostEnum.Gallery:
-            // Gallery
-            const galleryLink = post.querySelector("a.title");
-            if (galleryLink?.href && galleryLink?.href.includes("gallery")) 
-            {
-                return [postToCheckList, galleryLink?.href];
-            }
-
-            break;
-        case TypeOfPostEnum.Video:
-            // Video
-            const commentsLink = post.querySelector('a.comments');
-            if (commentsLink?.href) {
-                // Detect Reddit-hosted video post
-                const outgoingLink = post.querySelector('a.title');
-                const videoTag = post.querySelector('video');
-
-                const isRedditVideo =
-                    outgoingLink?.href?.includes('v.redd.it') ||
-                    post.dataset.domain === 'v.redd.it' ||
-                    !!videoTag;
-
-
-                if (isRedditVideo) return [postToCheckList, commentsLink?.href];
-            }
-
-            break;
-        case TypeOfPostEnum.Redgif:
-            // Redgifs
-            const titleLink = post.querySelector('a.title');
-            if (titleLink?.href && titleLink.href.toLowerCase().includes('redgifs.com')) {
-                return [TypeOfPostEnum.Redgif, titleLink?.href];
-            }
-
-            break;
-        case TypeOfPostEnum.Comment:
-            // Match Reddit comment image/media URLs
-            if(post?.href &&
-                (/\.(jpg|jpeg|png|gif|webp)$/i.test(post?.href) ||
-                post?.href.includes('i.redd.it') ||
-                post?.href.includes('preview.redd.it') ||
-                post?.href.includes('redditmedia.com'))) 
-            {
-                return [postToCheckList, post?.href];
-            }
-
-            break;
-        case TypeOfPostEnum.GalleryComment:
-            // Imgur Galleries in comments
-            if (/imgur\.com\/(a|gallery)\//i.test(post.href)) {
-                return [postToCheckList, post.href];
-            }
-            
-            break;
-        case TypeOfPostEnum.SearchResultRedgif:
-            // Redgifs in Search Result
-            if (post.href) {
-                if (post.href.includes('redgifs.com')) {
-                    return [postToCheckList, post.href];
-                }
-            }
-            
-            break;
-        case TypeOfPostEnum.SearchResultGallery:
-            // Galleries in Search Result
-            if (post.href) {
-                if (post.href.includes('reddit.com/gallery/')) {
-                    return [postToCheckList, post.href];
-                }
-            }
-            
-            break;
-        case TypeOfPostEnum.SearchResultVideo:
-            // Video in Search Result
-            if (post.href) {
-                if (post.href.includes('v.redd.it/')) {
-                    return [postToCheckList, post.href];
-                }
-            }
-            
-            break;
-        case TypeOfPostEnum.SearchResultImage:
-            // Images in Search Result
-            if (post.href) {
-                if (post.href.includes('i.redd.it/')) {
-                    return [postToCheckList, post.href];
-                }
-            }
-            
-            break;
-        default:
-            return [null,  ''];
+        if (postTitleHref.includes('gallery')) { // Gallery Check
+            return [TypeOfPostEnum.Gallery, postTitleHref];
+        } else if (postTitleHref.includes('redgifs.com')) { // Redgif Check
+            return [TypeOfPostEnum.Redgif, postTitleHref];
+        } else if ((/\.(jpg|jpeg|png|gif|webp)$/i.test(postTitleLink?.href) ||
+            postTitleLink?.href.includes('i.redd.it') ||
+            postTitleLink?.href.includes('preview.redd.it') ||
+            postTitleLink?.href.includes('redditmedia.com'))) 
+        {
+            return [TypeOfPostEnum.Post, postTitleLink?.href];        
+        }
     }
-            
-    return [null,  ''];
 
+    // Post Comments Check
+    const commentsLink = post.querySelector('a.comments');
+    if (commentsLink && commentsLink?.href) {
+        // Detect Reddit-hosted video post
+        const outgoingLink = post.querySelector('a.title');
+        const videoTag = post.querySelector('video');
+
+        if (outgoingLink?.href?.includes('v.redd.it') || post.dataset.domain === 'v.redd.it' || !!videoTag) {
+            return [TypeOfPostEnum.Video, commentsLink?.href];
+        }
+    }
+
+    // Post Misc Check
+    const postThumbnailLink = post.querySelector('a.thumbnail');
+    if (postThumbnailLink && postThumbnailLink?.href && /\.(jpg|jpeg|png|gif|webp)$/i.test(postThumbnailLink?.href)) {
+        return [TypeOfPostEnum.Post, postThumbnailLink?.href];
+    }
+
+    const postImageLink = post.querySelector('.expando img, .preview img');
+    if (postImageLink?.src) {
+        return [TypeOfPostEnum.Post, postImageLink?.src];
+    }
+
+    return [null, null];
 }
+
+// -----------------------------
+// Check the type of comment and extract href
+//
+// comment: Comment to check against
+// -----------------------------
+function checkTypeOfCommentandExtractHref(comment) {
+    let href = comment?.href;
+    if (!href) return [null, null];
+
+    // Match Reddit comment image/media URLs
+    if((/\.(jpg|jpeg|png|gif|webp)$/i.test(comment?.href) ||
+        comment?.href.includes('i.redd.it') ||
+        comment?.href.includes('preview.redd.it') ||
+        comment?.href.includes('redditmedia.com'))) 
+    {
+        return [TypeOfPostEnum.Comment, comment?.href];
+    }
+
+    // Imgur Galleries in comments
+    if (/imgur\.com\/(a|gallery)\//i.test(comment?.href)) {
+        return [TypeOfPostEnum.GalleryComment, comment?.href];
+    }
+
+    return [null, null];
+}
+
+// -----------------------------
+// Check the type of search result and extract href
+//
+// searchResult: Post to check against
+// -----------------------------
+function checkTypeOfSearchResult(searchResult) {
+    let href = searchResult?.href;
+    if (!href) return [null, null];
+
+    // Redgifs in Search Result
+    if (href.includes('redgifs.com')) {
+        return [TypeOfPostEnum.Redgif, href];
+    }
+
+    // Galleries in Search Result
+    if (href.includes('reddit.com/gallery/')) {
+        return [TypeOfPostEnum.Gallery, href];
+    }
+
+    // Video in Search Result
+    if (href.includes('v.redd.it/')) {
+        return [TypeOfPostEnum.Video, href];
+    }
+
+    // Images in Search Result
+    if (href.includes('i.redd.it/')) {
+        return [TypeOfPostEnum.Post, href];
+    }
+
+    return [null, null];
+}
+
+
+// --------------------------------------------- Filenames ---------------------------------------------
 
 // Extract the post title from a post
 function extractFilenameFromPost(post) {
@@ -561,8 +451,7 @@ function sanatizeFilenameAndAttachFileType (filename, url) {
     const fileType = 'png'; //getFileType(url);
     filename = sanatizeFilename(filename);
  
-    console.log(`Sanatized Name: ${filename}.${fileType}`);
-
+    // console.log(`Sanatized Name: ${filename}.${fileType}`);
     return `${filename}.${fileType}`;
 }
 
@@ -588,10 +477,7 @@ function processPage() {
         'div.thing'
     );
     posts.forEach((post) => {
-        addDownloadButtonToPost(post);
-        addDownloadButtonToGallery(post);
-        addDownloadButtonToVideo(post);
-        addDownloadButtonToRedgifs(post);
+        addToPost(post);
     });
 
     // Comments
@@ -599,8 +485,7 @@ function processPage() {
         '.comment'
     );
     comments.forEach((comment) => {
-        addDownloadButtonToComment(comment);
-        addDownloadButtonToGalleryComment(comment);
+        addToComment(comment);
     });
 
     // Self Text Posts
@@ -608,7 +493,7 @@ function processPage() {
         '.usertext-body, .md'
     );
     selfText.forEach((text) => {
-        addDownloadButtonToGalleryComment(text);
+        addToComment(text);
     });
 
     // Search Results
@@ -616,7 +501,7 @@ function processPage() {
         '.search-result'
     );
     searchResultPosts.forEach((text) => {
-        addDownloadButtonToSearchResultPost(text);
+        addToSearchResult(text);
     });
 }
 
