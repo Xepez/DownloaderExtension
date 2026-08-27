@@ -467,11 +467,56 @@ function getFileType(url) {
     return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
 }
 
+
+// --------------------------------------------- PIXIV ---------------------------------------------
+// Download Pixiv Posts
+function addToPixivPost(post) {
+    if (!post) return;
+
+    const entry = post.querySelector('.sc-2d087ba2-0.fZymdw'); // Bottom Toolbar
+    if (!entry || entry.querySelector('.download')) return;
+
+    const btn = document.createElement('button');
+    btn.innerText = 'Download';
+    btn.className = 'download';
+    btn.style.margin = '5px';
+    btn.style.padding = '2px 5px';
+    btn.style.fontSize = '11px';
+    btn.style.cursor = 'pointer';
+
+    const urlList = [];
+
+    btn.onclick = () => {
+        console.log(post);
+        const images = post.querySelectorAll('.sc-a18c97f3-3.cabhzD'); // Not Expanded - potentially something to do? - '.sc-a18c97f3-3.jIaiZR'
+        console.log(images);
+        if (!images) return;
+
+        images.forEach((image) => {
+            if (!image.href) return;
+
+            urlList.push(image.href);
+        });
+
+        browser.runtime.sendMessage({
+            action: 'downloadPixivImages',
+            url: urlList
+        });
+
+    };
+
+    entry.appendChild(btn);
+}
+
+
 // --------------------------------------------- Process & Observer ---------------------------------------------
 // -----------------------------
 // Process everything
 // -----------------------------
 function processPage() {
+    // Reddit Downloader
+    // TODO - Split to seperate file
+
     // Posts
     const posts = document.querySelectorAll(
         'div.thing'
@@ -503,6 +548,17 @@ function processPage() {
     searchResultPosts.forEach((text) => {
         addToSearchResult(text);
     });
+
+
+    // Pixiv Downloader
+    // TODO - Split to seperate file
+
+    const pixivPosts = document.querySelectorAll(
+        '.sc-8d5ac044-1.pEkOH'
+    );
+    pixivPosts.forEach((post) => {
+        addToPixivPost(post);
+    })
 }
 
 // -----------------------------

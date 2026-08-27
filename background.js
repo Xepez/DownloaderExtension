@@ -349,12 +349,95 @@ async function downloadImgurAlbum(albumUrl, customFileName = null) {
         }
     }
 }
+
+// PixivImageDownloader
+async function downloadPixivImages(urlList, filenameList) {
+    for (let i = 0; i < urlList.length; i++) {
+        const url = urlList[i];
+        // const filename = filenameList[i];
+
+        console.log(`Downloading ${i + 1}/${urlList.length}: ${url}`);
+
+        try {
+            const downloadId = await browser.downloads.download({
+                url: url
+                // , filename: filename
+                , headers: [
+                    {
+                        name: 'Referer',
+                        value: 'https://www.pixiv.net/'
+                    }
+                ]
+
+            });
+
+            console.log('Download started:', downloadId);
+
+            const result = await waitForDownload(downloadId);
+
+            console.log('RESULT:', result);
+
+            if (result.state === 'complete') {
+                console.log('Download complete:'); //, filename);
+            } else {
+                console.error(
+                    'Download interrupted:',
+                    // filename,
+                    result.error
+                );
+            }
+
+            // Delay between downloads
+            await sleep(3000);
+
+        } catch (err) {
+            console.error('Failed to start download:', url, err);
+
+            // Back off after an error
+            await sleep(15000);
+        }
+    }
+}
+
+
+function waitForDownload(downloadId) {
+    return new Promise((resolve) => {
+
+        const listener = async (delta) => {
+            if (delta.id !== downloadId) {
+                return;
+            }
+
+            if (
+                delta.state &&
+                (delta.state.current === 'complete' ||
+                 delta.state.current === 'interrupted')
+            ) {
+                browser.downloads.onChanged.removeListener(listener);
+
+                const results = await browser.downloads.search({
+                    id: downloadId
+                });
+
+                resolve(results[0]);
+            }
+        };
+
+        browser.downloads.onChanged.addListener(listener);
+    });
+}
+
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // -----------------------------
 // Message listener
 // -----------------------------
 browser.runtime.onMessage.addListener(
     (message) => {
-        console.log('MESSAGE RECEIVED', message);
+        console.log('MESSAGE RECEIVED: ', message);
         return handleMessage(message);
     }
 );
@@ -392,5 +475,10 @@ async function handleMessage(message) {
     // Imgur Ablum Downloader
     if (message.action === 'downloadImgurAlbum') {
         downloadImgurAlbum(message.url, message.customFileName);
+    }
+
+    // Pixiv Image Downloader
+    if (message.action === 'downloadPixivImages') {
+        await downloadPixivImages(message.url, message.customFileName);
     }
 }

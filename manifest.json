@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "Reddit Download Button",
+  "name": "Reddit/Pixiv Download Button",
   "version": "1.0",
-  "description": "Adds a download button to Reddit posts for personal use.",
+  "description": "Adds a download button to Reddit and Pixiv posts for personal use.",
   "icons": {
     "48": "icons/download.png"
   },
@@ -13,7 +13,9 @@
     "https://api.redgifs.com/*",
     "https://media.redgifs.com/*",
     "https://imgur.com/*",
-    "https://i.imgur.com/*"
+    "https://i.imgur.com/*",
+    "https://www.pixiv.net/*",
+    "https://i.pximg.net/*"
   ],
   "background": {
     "scripts": [
@@ -25,7 +27,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://www.reddit.com/*", "*://old.reddit.com/*"],
+      "matches": ["*://www.reddit.com/*", "*://old.reddit.com/*", "*://www.pixiv.net/*"],
       "js": ["content.js"]
     }
   ],
