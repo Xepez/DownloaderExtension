@@ -20,5 +20,4 @@ Add the following files in the ffmpeg folder
  -  ffmpeg-core.wasm
 
 ## TODO
- - Fix bug with comments increase number of buttons with comment depth
  - Review imgur downloading and comment functions to ensure they are match standards with other functions
