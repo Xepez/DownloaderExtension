@@ -134,40 +134,55 @@ function createDefaultButtonOnClick(btn, href, customFileName = null) {
 function createGalleryButtonOnClick(btn, href, customFileName = null) {
     btn.onclick = async () => {
         try {
-            // Reddit JSON endpoint
             const jsonUrl = href.replace(/\/$/, '') + '.json';
 
             const response = await fetch(jsonUrl);
-            const data = await response.json();
 
+            if (!response.ok) {
+                throw new Error(`Reddit returned HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
             const postData = data?.[0]?.data?.children?.[0]?.data;
 
-            if (!postData?.media_metadata) {
+            if (!postData?.media_metadata || !postData?.gallery_data?.items) {
                 console.log('No gallery metadata found');
                 return;
             }
 
             const mediaMetadata = postData.media_metadata;
+            const galleryItems = postData.gallery_data.items;
 
-            const urls = Object.values(mediaMetadata)
-                .map((item) => {
+            const urls = galleryItems
+                .map((galleryItem) => {
+                    const mediaId = galleryItem.media_id;
+                    const item = mediaMetadata[mediaId];
+
+                    if (!item) {
+                        console.warn(`No metadata found for ${mediaId}`);
+                        return null;
+                    }
+
                     const source = item?.s?.u || item?.s?.gif;
-
                     return source ? source.replace(/&amp;/g, '&') : null;
                 })
                 .filter(Boolean);
 
-            for (let i = 0; i < urls.length; i++) {
-                const filename = `pg${i}_${customFileName}`
+            console.log(`Found ${urls.length} gallery images`);
 
-                browser.runtime.sendMessage({
+            for (let i = 0; i < urls.length; i++) {
+                // TODO: Check sanatizeFilenameAndAttachFileType to add file type dedection when implementing custom file types
+                const filename = customFileName.replace('.png', `_pg${i + 1}.png`);
+
+                await browser.runtime.sendMessage({
                     action: 'download',
                     url: urls[i],
                     customFileName: filename
                 });
             }
 
-            console.log(`Downloaded ${urls.length} gallery images` );
+            console.log(`Downloaded ${urls.length} gallery images`);
+
         } catch (err) {
             console.error('Gallery download failed:', err);
         }
@@ -461,7 +476,7 @@ function sanatizeFilename(filename) {
     return filename.replaceAll(" ", "_").replace(/[^a-z0-9_-]/gi, '').toLowerCase();
 }
 
-// TODO - Do I need this?
+// TODO - Get this to work (will probs wont to convert webp)
 // Source: https://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript/12900504#12900504
 function getFileType(url) {
     return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
