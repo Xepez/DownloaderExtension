@@ -463,7 +463,7 @@ function extractFilenameFromSearchResult(searchResultTitle) {
 
 // Clean up custom file names and attach the type of file to the filename from the url
 function sanatizeFilenameAndAttachFileType (filename, url) {
-    const fileType = 'png'; //getFileType(url);
+    const fileType = getFileType(url);
     filename = sanatizeFilename(filename);
  
     // console.log(`Sanatized Name: ${filename}.${fileType}`);
@@ -476,10 +476,18 @@ function sanatizeFilename(filename) {
     return filename.replaceAll(" ", "_").replace(/[^a-z0-9_-]/gi, '').toLowerCase();
 }
 
-// TODO - Get this to work (will probs wont to convert webp)
+// TODO - Get this to work see if slice can work
 // Source: https://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript/12900504#12900504
 function getFileType(url) {
-    return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
+    // console.log("URL: ", url, " | Slice test: ", url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2));
+    // return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
+
+    if (/\.(jpg)$/i.test(url)) return "jpg";
+    else if (/\.(jpeg)$/i.test(url)) return "jpeg";
+    else if (/\.(png)$/i.test(url)) return "png";
+    else if (/\.(gif)$/i.test(url)) return "gif";
+    else if (/\.(webp)$/i.test(url)) return "png"; // Fuck webp
+    else return ".png";
 }
 
 
