@@ -484,7 +484,7 @@ function getFileType(url) {
     // return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
 
     if (/\.(jpg)$/i.test(url)) return "jpg";
-    else if (/\.(jpeg)$/i.test(url)) return "png";
+    else if (/\.(jpeg)$/i.test(url)) return "jpeg";
     else if (/\.(png)$/i.test(url)) return "png";
     else if (/\.(gif)$/i.test(url)) return "gif";
     else if (/\.(webp)$/i.test(url)) return "png"; // Fuck webp
