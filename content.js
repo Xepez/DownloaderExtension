@@ -473,7 +473,8 @@ function sanatizeFilenameAndAttachFileType (filename, url) {
 
 // Source: https://stackoverflow.com/questions/8485027/javascript-url-safe-filename-safe-string/8485137#8485137
 function sanatizeFilename(filename) {
-    return filename.replaceAll(" ", "_").replace(/[^a-z0-9_-]/gi, '').toLowerCase();
+    // Limit filename to the first 100 characters and sanatize for file names
+    return filename.replaceAll(" ", "_").replace(/[^a-z0-9_-]/gi, '').substring(0, 100).toLowerCase();
 }
 
 // TODO - Get this to work see if slice can work
@@ -483,7 +484,7 @@ function getFileType(url) {
     // return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
 
     if (/\.(jpg)$/i.test(url)) return "jpg";
-    else if (/\.(jpeg)$/i.test(url)) return "jpeg";
+    else if (/\.(jpeg)$/i.test(url)) return "png";
     else if (/\.(png)$/i.test(url)) return "png";
     else if (/\.(gif)$/i.test(url)) return "gif";
     else if (/\.(webp)$/i.test(url)) return "png"; // Fuck webp
