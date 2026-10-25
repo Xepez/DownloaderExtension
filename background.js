@@ -165,6 +165,14 @@ async function mergeAndDownload(videoUrl, audioCandidates, customFileName) {
     console.log('Done');
 }
 
+function onStartedDownload(id) {
+  console.log(`Started downloading: ${id}`);
+}
+
+function onFailed(error) {
+  console.log(`Download failed: ${error}`);
+}
+
 // -----------------------------
 // Redgif Downloader
 // -----------------------------
@@ -224,6 +232,9 @@ async function downloadRedgifs(pageUrl, customFileName = null) {
         }
 
         const data = await response.json();
+
+        console.log("Data: ", data);
+
         const urls = data?.gif?.urls;
         const videoUrl = urls?.hd || urls?.sd;
         if (!videoUrl) {
@@ -234,10 +245,14 @@ async function downloadRedgifs(pageUrl, customFileName = null) {
 
         const filename = customFileName ? customFileName : gifId;
 
-        await browser.downloads.download({
+        let downloadId = await browser.downloads.download({
             url: videoUrl,
-            filename: `${filename}.mp4`
+            filename: `${filename}.mp4`,
+            conflictAction: "uniquify",
         });
+
+        console.log(downloadId);
+        downloadId.then(onStartedDownload, onFailed);
     } catch (err) {
         console.error('Redgifs failed:', err);
     }

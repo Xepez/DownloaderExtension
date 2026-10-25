@@ -13,7 +13,7 @@ const TypeOfPostEnum = Object.freeze({
     Video: 'Video',
     Redgif: 'Redgif',
     Comment: 'Comment',
-    CommentGallery: 'Comment Gallery',
+    CommentGallery: 'Comment Gallery', // Need to review this: causing dupe buttons and incorrect file names
 });
 
 
@@ -27,7 +27,14 @@ function addToPost(post) {
 
     // Setup Filename
     let filename = extractFilenameFromPost(post);
-    filename = sanatizeFilenameAndAttachFileType(filename, href);
+    filename = sanatizeFilenameAndAttachFileType(filename, href, typeOfPost);
+
+    console.log("*****************************************");
+    console.log("post ", post);
+    console.log("filename ", filename);
+    console.log("typeOfPost ", typeOfPost);
+    console.log("*****************************************");
+
 
     // Setup Button
     const btn = setupButton(href, typeOfPost, filename);
@@ -74,7 +81,7 @@ function addToSearchResult(searchResult) {
 
     // Setup Filename
     let initialFilename = extractFilenameFromSearchResult(videoSearchTitle)
-    filename = sanatizeFilenameAndAttachFileType(filename, href);
+    filename = sanatizeFilenameAndAttachFileType(filename, href, typeOfPost);
 
     // Setup Button
     const btn = setupButton(href, typeOfPost, filename);
@@ -170,9 +177,11 @@ function createGalleryButtonOnClick(btn, href, customFileName = null) {
 
             console.log(`Found ${urls.length} gallery images`);
 
+            // TODO: Check sanatizeFilenameAndAttachFileType to add file type dedection when implementing custom file types
+            const fileType = "png"; // getFileType(customFileName);
+
             for (let i = 0; i < urls.length; i++) {
-                // TODO: Check sanatizeFilenameAndAttachFileType to add file type dedection when implementing custom file types
-                const filename = customFileName.replace('.png', `_pg${i + 1}.png`);
+                const filename = customFileName.replace(`.${fileType}`, `_pg${i + 1}.${fileType}`);
 
                 await browser.runtime.sendMessage({
                     action: 'download',
@@ -388,14 +397,14 @@ function checkTypeOfCommentandExtractHref(comment) {
     if((/\.(jpg|jpeg|png|gif|webp)$/i.test(comment?.href) ||
         comment?.href.includes('i.redd.it') ||
         comment?.href.includes('preview.redd.it') ||
-        comment?.href.includes('redditmedia.com'))) 
+        comment?.href.includes('redditmedia.com')))
     {
         return [TypeOfPostEnum.Comment, comment?.href];
     }
 
     // Imgur Galleries in comments
     if (/imgur\.com\/(a|gallery)\//i.test(comment?.href)) {
-        return [TypeOfPostEnum.GalleryComment, comment?.href];
+        return [TypeOfPostEnum.CommentGallery, comment?.href];
     }
 
     return [null, null];
@@ -462,12 +471,19 @@ function extractFilenameFromSearchResult(searchResultTitle) {
 }
 
 // Clean up custom file names and attach the type of file to the filename from the url
-function sanatizeFilenameAndAttachFileType (filename, url) {
+function sanatizeFilenameAndAttachFileType (filename, url, typeOfPost) {
     const fileType = getFileType(url);
     filename = sanatizeFilename(filename);
- 
-    // console.log(`Sanatized Name: ${filename}.${fileType}`);
-    return `${filename}.${fileType}`;
+
+    if (typeOfPost === TypeOfPostEnum.Video || typeOfPost === TypeOfPostEnum.Redgif) {
+        // Dont need to append file type of videos
+        return filename;
+    } else if (fileType === "") {
+        // If file type not found then default to png - **May be better to error but we will see how this goes
+        return `${filename}.png`;
+    } else {
+        return `${filename}.${fileType}`;
+    }
 }
 
 
@@ -480,7 +496,7 @@ function sanatizeFilename(filename) {
 // TODO - Get this to work see if slice can work
 // Source: https://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript/12900504#12900504
 function getFileType(url) {
-    // console.log("URL: ", url, " | Slice test: ", url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2));
+    console.log("URL: ", url, " | Slice test: ", url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2));
     // return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
 
     if (/\.(jpg)$/i.test(url)) return "jpg";
@@ -488,7 +504,7 @@ function getFileType(url) {
     else if (/\.(png)$/i.test(url)) return "png";
     else if (/\.(gif)$/i.test(url)) return "gif";
     else if (/\.(webp)$/i.test(url)) return "png"; // Fuck webp
-    else return ".png";
+    else return "";
 }
 
 
